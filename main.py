@@ -16,30 +16,25 @@ import json
 import sys
 
 # Get the arguments from command line
+#############################
 args = sys.argv
+#############################
 
+
+#
 # URLs
-url = {}
-url['base'] = 'https://swapi.dev/api/'
-url['planet'] = 'https://swapi.dev/api/planets/'
+#
+
+#############################
+url = 'https://swapi.dev/api/'
+#############################
+
+def get_url(ressource, schema):
+    return url + ressource + '/' + str(schema)
 
 def get_url_search(ressource, schema):
-    return 'https://swapi.dev/api/' + ressource + '/?search=' + schema
+    return url + ressource + '/?search=' + schema
 
-# Fetch from api string data, http request
-def fetch_data(url):
-    try:
-        # Get request timeout of 5 seconds
-        response = requests.get(url, timeout=5)
-        
-        # Check the status code
-        response.raise_for_status()
-        
-        return response.text
-    except requests.RequestException as e:
-        # errors (e.g., connection refused, timeout exceeded, etc.)
-        print(f"An HTTP request error occurred: {e}")
-        return None
 
 #
 # Convert and print
@@ -66,27 +61,62 @@ def print_data(df):
 
 
 #
+# Fetch from api string data, http request
+#
+ 
+def fetch_data(url, to_json=True):
+    try:
+        # Get request timeout of 5 seconds
+        response = requests.get(url, timeout=5)
+        
+        # Check the status code
+        response.raise_for_status()
+        
+        return str_to_json(response.text)
+    except requests.RequestException as e:
+        # errors (e.g., connection refused, timeout exceeded, etc.)
+        print(f"An HTTP request error occurred: {e}")
+        return None
+
+
+#
+# Ressources
+#
+
+def get_ressources_df():
+    df = fetch_data(url)
+    return df
+
+#############################
+ressources_df = get_ressources_df()
+#############################
+
+def get_ressources():
+    ressource = ()
+    for item in ressources_df:
+        ressource += (item, )
+    return ressource
+
+#############################
+ressources = get_ressources()
+#############################
+
+
+#
 # Handling specific data
 # Ressources from base
 # Planets
 # Make a seach
 #
 
-def get_ressources():
-    data = fetch_data(url['base'])
-    return str_to_json(data)
-
-def ressources():
-    df = get_ressources()
-    
 def get_planet(n):
-    data = fetch_data(url['planet'] + str(n))
-    return str_to_json(data)
+    df = fetch_data(get_url("planets", n))
+    return df
 
 def search(ressource, s):
-    #print(get_url_search(ressource, s))
-    data = fetch_data(get_url_search(ressource, s))
-    return str_to_json(data)
+    df = fetch_data(get_url_search(ressource, s))
+    return df
+
 
 #
 # Handling arguments
@@ -95,7 +125,7 @@ def search(ressource, s):
 def switch_case(main_args):
     case = main_args[1]
     if case == 'ressources':
-        return get_ressources()
+        return get_ressources_df()
     elif case == 'planet':
         return get_planet(main_args[2])
     elif case == 'search':
@@ -122,6 +152,7 @@ def handle_args(elems):
     else:
         print("Pass ressource")
   
+
 #
 # Main
 #
@@ -130,7 +161,6 @@ def main():
     print("")
     handle_args(args)
     print("\n")
-    ressources()
     
 if __name__ == "__main__":
     main()
