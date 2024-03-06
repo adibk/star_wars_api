@@ -17,8 +17,14 @@ def max_lists(*lists):
         ret = max(ret, max_len(l))
     return ret
 
-def if_none(val, new_val):
+def if_none(val, new_val, empty=True):
+    if empty == True and val == '':
+        return new_val
     return val if val != None else new_val
 
 def sort_tuple(tup):
     return tuple(sorted(tup))
+
+def pretty_tuple(tup):
+    output = ', '.join(str(item) for item in tup)
+    return output

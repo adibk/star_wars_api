@@ -1,0 +1,64 @@
+#################
+#    To do      #
+#################
+
+main.py
+
+usage - done
+
+resource - done
+
+<resource> with schema
+- people - done
+- planets - done
+- films - done
+- species - done
+- vehicles - done (error, not all vehicles available)
+- starships - done
+
+search <resource> <str_to_search> - done
+
+info - done
+
+resource alone, infos about a specific resource, 
+maybe example: 
+main.py people
+main.py people schema
+<resource> infos 
+
+wookiee ?
+
+--------------------------
+
+Options
+
+-v verbose
+-e print err
+--no-color
+
+manual
+
+--------------------------
+
+print out grouped
+color choice grouped
+
+Error handling
+
+Unit test
+
+using class/objects
+
+--------------------------
+
+multiple requests
+
+resource specific request
+
+print essential info nicely, maybe dataframe
+
+compare, sort, max, min 
+
+--------------------------
+
+Documentation

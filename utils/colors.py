@@ -28,10 +28,10 @@ class Color:
     ITALIC = '\033[3m'
     STRIKETHROUGH = '\033[9m'
     
-def str_clr(s, clr=Color.RED):
+def str_clr(s, clr=Color.BRIGHT_RED):
     return clr + s + Color.END
 
-def clr(lst, clr=Color.RED):
+def clr(lst, clr=Color.BRIGHT_RED):
     clr_lst = []
     if not isinstance(clr, list):
         clr = [clr]
