@@ -41,7 +41,7 @@ api_resources = ('people', 'planets', 'films', 'species', 'vehicles', 'starships
 # Options
 ##################################################################################################################################
 
-options = ('info', 'resources', 'search')
+spe_args = ('info', 'resources', 'search')
 
 user_opts = None
 
@@ -234,6 +234,7 @@ def check_resources(out=False, err=True):
 
 def get_people(n):
     df = fetch_data(get_url("people", n))
+    # print(n)
     return df
 
 def get_planets(n):
@@ -288,16 +289,16 @@ def switch_case(main_args):
 def check_args(elems):
     nb_args = len(elems) - 1
     # no arg or arg=info
-    if nb_args == 0 or (nb_args >= 0 and elems[1] == options[0]):
+    if nb_args == 0 or (nb_args >= 0 and elems[1] == spe_args[0]):
         print_err()
     # check if arg 1 is resource, if ok then is there schema
-    elif nb_args >= 1 and elems[1] not in options:
+    elif nb_args >= 1 and elems[1] not in spe_args:
         if elems[1] not in api_resources:
             print_err("Wrong resource")
         elif nb_args == 1:
             print_err("Pass schema")
     # search 
-    elif elems[1] == options[2]:
+    elif elems[1] == spe_args[2]:
         if nb_args < 3:
             print_err("Search missing argument")
         elif elems[2] not in api_resources:
@@ -309,7 +310,7 @@ def get_options(elems):
 
     for e in elems:
         pattern_short_opt = re.compile(r'^-\w+$')
-        pattern_long_opt = re.compile(r'^--[-\w]*\w[-\w]*$')
+        pattern_long_opt = re.compile(r'^--[-\w]*\w[-=\w]*$')
     
         if pattern_short_opt.match(e): 
             for chr in e[1:]:
@@ -327,11 +328,12 @@ def get_options(elems):
     return [short_opts, long_opts]
 
 # DEBUG, move to test.py in unittest
-def print_options(opts):
-    for opt in opts[0]:
-        print(opt)
-    for opt in opts[1]:
-        print(opt)
+def print_options(opts=user_opts):
+    if opts is not None:
+        for opt in opts[0]:
+            print(opt)
+        for opt in opts[1]:
+            print(opt)
 
 def rm_options(elems):
     return [e for e in elems if not e.startswith('-')]
@@ -340,7 +342,13 @@ def rm_options(elems):
 def check_options(opts):
     global user_opts
     user_opts = opts
-    print(user_opts)
+
+    # global opt_n
+
+    # for opt in user_opts[1]:
+    #     if opt[0] == 'n':
+    #         opt_n = str(opt[2:])
+    # print(user_opts)
 
 def handle_args(elems):
     options_tmp = get_options(elems[1:])
@@ -348,12 +356,14 @@ def handle_args(elems):
     args_no_opts = rm_options(elems)
     # print(args_no_opts)
     check_options(options_tmp)
-    # return
+    
     check_args(args_no_opts)
     if err_occured == True:
         return
     
-    data = switch_case(elems)
+    print_options(options_tmp)
+    
+    data = switch_case(args_no_opts)
     if stream_out == True and data is not None:
         print_data(data)
   
