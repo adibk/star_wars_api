@@ -43,6 +43,8 @@ api_resources = ('people', 'planets', 'films', 'species', 'vehicles', 'starships
 
 options = ('info', 'resources', 'search')
 
+user_opts = None
+
 verbose = False
 # verbose = True
 no_color = False
@@ -324,9 +326,6 @@ def get_options(elems):
     
     return [short_opts, long_opts]
 
-def check_options(opts):
-    pass
-
 # DEBUG, move to test.py in unittest
 def print_options(opts):
     for opt in opts[0]:
@@ -336,6 +335,12 @@ def print_options(opts):
 
 def rm_options(elems):
     return [e for e in elems if not e.startswith('-')]
+
+
+def check_options(opts):
+    global user_opts
+    user_opts = opts
+    print(user_opts)
 
 def handle_args(elems):
     options_tmp = get_options(elems[1:])
