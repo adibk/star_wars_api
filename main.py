@@ -361,7 +361,7 @@ def handle_args(elems):
     if err_occured == True:
         return
     
-    print_options(options_tmp)
+    # print_options(options_tmp)
     
     data = switch_case(args_no_opts)
     if stream_out == True and data is not None:
