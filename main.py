@@ -62,10 +62,11 @@ stream_err = True
 
 #############################
 url = 'https://swapi.dev/api/'
-url_documentation = 'https://swapi.dev/documentation'
+url = 'https://swapi.tech/api/'
+url_documentation = f'{url}documentation'
 #############################
 
-def get_url(resource, schema):
+def get_url(resource, schema=""):
     return url + resource + '/' + str(schema)
 
 def get_url_search(resource, schema):
@@ -111,14 +112,14 @@ err_occured = False
 
 def print_err(err=None, man=True):
     global err_occured
-    err_occured = True
     
     if stream_err == False:
         return
     if err is not None:
         print(colors.clr("Error:"), err)
-    if man == True:
+    if man == True and err_occured == False:
         print_man()
+    err_occured = True
 
 def print_warning(err):
     print(print(colors.clr("!!WARNING!! -", Color.MAGENTA), err))
@@ -198,7 +199,11 @@ resources_df = get_resources_df()
 
 def get_resources():
     resource = ()
-    for item in resources_df:
+    if resources_df == None:
+        return None
+    # change to this line in the 'https://swapi.dev/api/' api
+    # for item in resources_df:
+    for item in resources_df['result']:
             resource += (item, )
     return resource
 
@@ -213,6 +218,10 @@ def diff_rsrc(rsrc_1, rsrc_2):
     return (tools.sort_tuple(diff_1), tools.sort_tuple(diff_2))
 
 def check_resources(out=False, err=True):
+    if resources_to_check == None:
+        # might want to add a output, specially if verbose: Check haven't been possible
+        return False
+
     rsrc_to_check_sorted = tools.sort_tuple(resources_to_check)
     rsrc_sorted = tools.sort_tuple(resources)
     if  rsrc_to_check_sorted == rsrc_sorted:
@@ -279,9 +288,27 @@ def get_rand_item(rsrc):
     n = random.randint(0, 20)
     return get_one_item(rsrc, n)
     
+from selenium import webdriver
+import time
+
+def get_generated_data(url, timeout):
+    options = webdriver.ChromeOptions()
+    options.add_argument('headless')
+    driver = webdriver.Chrome(options=options)
+
+    driver.get(url)
+    time.sleep(timeout) 
+
+    html = driver.page_source
+    driver.quit()
+    return html
+
+    
 def get_info(rsrc):
     df = tools.clean_str(fetch_data(url_documentation, False))
-    
+    df = get_generated_data(url_documentation, 3)
+    print(df)
+     
     info = f'{colors.clr(rsrc.capitalize(), Color.UNDERLINE + Color.BOLD + Color.GREEN)}\n\n'
     pattern = re.compile(rf'<h3>{rsrc}</h3><p>(.*?)</p>', re.IGNORECASE)
     match = re.search(pattern, df)
@@ -321,13 +348,64 @@ def get_struct(rsrc):
     print_json_tree(data, 5)
     NEW_LINE()
     return None
-  
+
+# Do not work in the 'https://swapi.dev/api/' api
+def get_properties(rsrc):
+    data = get_one_item(rsrc)
+    print_json_tree(data['result']['properties'], 5)
+    NEW_LINE()
+    return None
+
 def get_keys(rsrc):
     data = get_one_item(rsrc)
-    for key in data.keys():
+    # change to this line in the 'https://swapi.dev/api/' api
+    # for key in data.keys():
+    for key in data['result']['properties'].keys():
         print(key)
     NEW_LINE()
     return None
+
+
+def get_all(rsrc):
+    next_url = get_url(rsrc)
+    all_results = []
+
+    # print(next_url)
+    while next_url:
+        data = fetch_data(next_url)
+        # print(data)
+        if data == None:
+            print("End")
+            break        
+        all_results.extend(data['results'])
+
+        next_url = data['next']
+        
+    return all_results
+
+def get_all_split(rsrc):
+    # pass 
+    next_url = get_url(rsrc)
+    all_results = []
+
+    # print(next_url)
+    while next_url:
+        data = fetch_data(next_url)
+        print_data(data)
+        # TEST()
+        s = input("continue Y/N: ")
+        if s == 'N':
+            break
+        if data == None:
+            print("End")
+            break        
+        all_results.extend(data['results'])
+
+        next_url = data['next']
+        
+    return None
+
+
 
 ##################################################################################################################################
 # Handling arguments
@@ -348,10 +426,12 @@ def switch_case(main_args):
     if case == 'info':
         return get_info(rsrc)
     elif case == 'all':
-        return
-        return get_all(case)
+        # return
+        return get_all(rsrc)
     elif case == 'struct':
         return get_struct(rsrc)
+    elif case == 'properties':
+        return get_properties(rsrc)
     elif case == 'keys':
         return get_keys(rsrc)
     elif case == 'sample':
@@ -359,8 +439,7 @@ def switch_case(main_args):
     elif case == 'rand':
         return get_rand_item(rsrc)
     elif case == 'all-split':
-        return
-        return get_all-plis(case)
+        return get_all_split(rsrc)
     elif  pattern.match(case):
         return get_one_item(rsrc, int(case))
     return None
@@ -460,13 +539,13 @@ def init():
         NEW_LINE()
     check_resources(verbose, stream_err)
 
-def exit():
+def exit_main():
     pass
 
 def main():
     init()
     handle_args(args)
-    exit()
+    exit_main()
     
 if __name__ == "__main__":
     main()
