@@ -3,6 +3,9 @@
 # Tools
 ##################################################################################################################################
 
+from bs4 import BeautifulSoup
+
+
 def safe_max(l, default=None):
     if not l:
         return default
@@ -28,3 +31,11 @@ def sort_tuple(tup):
 def pretty_tuple(tup):
     output = ', '.join(str(item) for item in tup)
     return output
+
+def clean_str(str):
+    return str.replace('\t', '').replace('\n', '').replace('\r', '')
+
+def strip_tags(html_str):
+    # Use BeautifulSoup to parse and extract text without tags
+    soup = BeautifulSoup(html_str, 'html.parser')
+    return soup.get_text()

@@ -18,6 +18,7 @@ import json
 import sys
 from itertools import zip_longest
 import re
+import random
 
 from utils import colors
 from utils.colors import Color
@@ -41,7 +42,9 @@ api_resources = ('people', 'planets', 'films', 'species', 'vehicles', 'starships
 # Options
 ##################################################################################################################################
 
-options = ('info', 'resources', 'search')
+spe_args = ('info', 'resources', 'search')
+
+user_opts = None
 
 verbose = False
 # verbose = True
@@ -59,9 +62,11 @@ stream_err = True
 
 #############################
 url = 'https://swapi.dev/api/'
+url = 'https://swapi.tech/api/'
+url_documentation = f'{url}documentation'
 #############################
 
-def get_url(resource, schema):
+def get_url(resource, schema=""):
     return url + resource + '/' + str(schema)
 
 def get_url_search(resource, schema):
@@ -107,14 +112,14 @@ err_occured = False
 
 def print_err(err=None, man=True):
     global err_occured
-    err_occured = True
     
     if stream_err == False:
         return
     if err is not None:
         print(colors.clr("Error:"), err)
-    if man == True:
+    if man == True and err_occured == False:
         print_man()
+    err_occured = True
 
 def print_warning(err):
     print(print(colors.clr("!!WARNING!! -", Color.MAGENTA), err))
@@ -126,17 +131,21 @@ def str_to_json(str):
         return None
     return df
 
-def print_data_str(str):
-    if str is not None:
-        df = str_to_json(str)    
-        print(json.dumps(df, indent=4))
-    else:
-        print("String is empty.")
-        return None
-    return df
+# def print_data_str(str):
+#     if str is not None:
+#         df = str_to_json(str)    
+#         print(json.dumps(df, indent=4))
+#     else:
+#         print("String is empty.")
+#         return None
+#     return df
 
-def print_data(df):
-    print(json.dumps(df, indent=4))
+def print_data(data):
+    # print(type(data))
+    if isinstance(data, str):
+        print(data)
+    else:
+        print(json.dumps(data, indent=4))
 
 def print_diff(diff):
     msgs = ["Expecting:",
@@ -167,7 +176,9 @@ def fetch_data(url, to_json=True):
         
         # Check the status code
         response.raise_for_status()
-        return str_to_json(response.text)
+        if to_json == True:
+            return str_to_json(response.text)
+        return response.text
     except requests.RequestException as e:
         # errors (e.g., connection refused, timeout exceeded, etc.)
         print_err(f"An HTTP request error occurred: {e}")
@@ -188,7 +199,11 @@ resources_df = get_resources_df()
 
 def get_resources():
     resource = ()
-    for item in resources_df:
+    if resources_df == None:
+        return None
+    # change to this line in the 'https://swapi.dev/api/' api
+    # for item in resources_df:
+    for item in resources_df['result']:
             resource += (item, )
     return resource
 
@@ -203,6 +218,10 @@ def diff_rsrc(rsrc_1, rsrc_2):
     return (tools.sort_tuple(diff_1), tools.sort_tuple(diff_2))
 
 def check_resources(out=False, err=True):
+    if resources_to_check == None:
+        # might want to add a output, specially if verbose: Check haven't been possible
+        return False
+
     rsrc_to_check_sorted = tools.sort_tuple(resources_to_check)
     rsrc_sorted = tools.sort_tuple(resources)
     if  rsrc_to_check_sorted == rsrc_sorted:
@@ -232,6 +251,7 @@ def check_resources(out=False, err=True):
 
 def get_people(n):
     df = fetch_data(get_url("people", n))
+    # print(n)
     return df
 
 def get_planets(n):
@@ -258,48 +278,192 @@ def search(resource, s):
     df = fetch_data(get_url_search(resource, s))
     return df
 
+def get_one_item(rsrc, n=1):
+    # print(rsrc, n)
+    df = fetch_data(get_url(rsrc, n))
+    # print(n)
+    return df
+
+def get_rand_item(rsrc):
+    n = random.randint(0, 20)
+    return get_one_item(rsrc, n)
+    
+from selenium import webdriver
+import time
+
+def get_generated_data(url, timeout):
+    options = webdriver.ChromeOptions()
+    options.add_argument('headless')
+    driver = webdriver.Chrome(options=options)
+
+    driver.get(url)
+    time.sleep(timeout) 
+
+    html = driver.page_source
+    driver.quit()
+    return html
+
+    
+def get_info(rsrc):
+    df = tools.clean_str(fetch_data(url_documentation, False))
+    df = get_generated_data(url_documentation, 3)
+    print(df)
+     
+    info = f'{colors.clr(rsrc.capitalize(), Color.UNDERLINE + Color.BOLD + Color.GREEN)}\n\n'
+    pattern = re.compile(rf'<h3>{rsrc}</h3><p>(.*?)</p>', re.IGNORECASE)
+    match = re.search(pattern, df)
+    if match:
+        info += tools.strip_tags(match.group(1))
+        info += f'{Color.BRIGHT_BLACK}\nFrom the Star Wars API - SWAPI - {colors.clr(url_documentation, Color.UNDERLINE)}{Color.END}'
+    else:
+        info += 'No Info\n'
+    return info
+
+def get_sample(rsrc, n):
+    if n == 0:
+        return None
+    
+    data = []
+    n = n if n < 5 else 5
+    unique_l = random.sample(range(1, 20), n)
+    for i in unique_l:
+        item = get_one_item(rsrc, i)
+        if item is not None:
+            data.append(get_one_item(rsrc, i))
+    return data
+    
+def print_json_tree(data, indent=0):
+    if isinstance(data, dict):
+        for key, value in data.items():
+            print(" " * indent + f'{colors.clr(str(key), Color.BRIGHT_WHITE + Color.BOLD)}')
+            print_json_tree(value, indent + 4)
+    elif isinstance(data, list):
+        for item in data:
+            print_json_tree(item, indent)
+    else:
+        print(" " * (indent + 4) + f'{colors.clr(str(data), Color.BRIGHT_BLUE + Color.ITALIC)}')
+
+def get_struct(rsrc):
+    data = get_one_item(rsrc)
+    print_json_tree(data, 5)
+    NEW_LINE()
+    return None
+
+# Do not work in the 'https://swapi.dev/api/' api
+def get_properties(rsrc):
+    data = get_one_item(rsrc)
+    print_json_tree(data['result']['properties'], 5)
+    NEW_LINE()
+    return None
+
+def get_keys(rsrc):
+    data = get_one_item(rsrc)
+    # change to this line in the 'https://swapi.dev/api/' api
+    # for key in data.keys():
+    for key in data['result']['properties'].keys():
+        print(key)
+    NEW_LINE()
+    return None
+
+
+def get_all(rsrc):
+    next_url = get_url(rsrc)
+    all_results = []
+
+    # print(next_url)
+    while next_url:
+        data = fetch_data(next_url)
+        # print(data)
+        if data == None:
+            print("End")
+            break        
+        all_results.extend(data['results'])
+
+        next_url = data['next']
+        
+    return all_results
+
+def get_all_split(rsrc):
+    # pass 
+    next_url = get_url(rsrc)
+    all_results = []
+
+    # print(next_url)
+    while next_url:
+        data = fetch_data(next_url)
+        print_data(data)
+        # TEST()
+        s = input("continue Y/N: ")
+        if s == 'N':
+            break
+        if data == None:
+            print("End")
+            break        
+        all_results.extend(data['results'])
+
+        next_url = data['next']
+        
+    return None
+
+
 
 ##################################################################################################################################
 # Handling arguments
 ##################################################################################################################################
 
 def switch_case(main_args):
-    case = main_args[1]
-    if case == 'resources':
-        return get_resources_df()
-    elif case == 'people':
-        return get_people(main_args[2])
-    elif case == 'planets':
-        return get_planets(main_args[2])
-    elif case == 'films':
-        return get_films(main_args[2])
-    elif case == 'species':
-        return get_species(main_args[2])
-    elif case == 'vehicles':
-        return get_vehicles(main_args[2])
-    elif case == 'starships':
-        return get_starships(main_args[2])
-    elif case == 'search':
-        return search(main_args[2], main_args[3])
+    rsrc = main_args[1]
+    
+    if rsrc in spe_args:
+        if rsrc == 'resources':
+            return get_resources_df()
+        elif rsrc == 'search':
+            return search(main_args[2], main_args[3])
+    
+    case = main_args[2]
+    pattern = re.compile(r'^[0-9]+$')
+    
+    if case == 'info':
+        return get_info(rsrc)
+    elif case == 'all':
+        # return
+        return get_all(rsrc)
+    elif case == 'struct':
+        return get_struct(rsrc)
+    elif case == 'properties':
+        return get_properties(rsrc)
+    elif case == 'keys':
+        return get_keys(rsrc)
+    elif case == 'sample':
+        return get_sample(rsrc, int(main_args[3]))
+    elif case == 'rand':
+        return get_rand_item(rsrc)
+    elif case == 'all-split':
+        return get_all_split(rsrc)
+    elif  pattern.match(case):
+        return get_one_item(rsrc, int(case))
     return None
 
 def check_args(elems):
     nb_args = len(elems) - 1
     # no arg or arg=info
-    if nb_args == 0 or (nb_args >= 0 and elems[1] == options[0]):
+    if nb_args == 0 or (nb_args >= 0 and elems[1] == spe_args[0]):
         print_err()
     # check if arg 1 is resource, if ok then is there schema
-    elif nb_args >= 1 and elems[1] not in options:
+    elif nb_args >= 1 and elems[1] not in spe_args:
         if elems[1] not in api_resources:
-            print_err("Wrong resource")
+            print_err(f"Wrong resource {colors.clr(elems[1], Color.RED)}")
         elif nb_args == 1:
             print_err("Pass schema")
+        elif nb_args == 2 and elems[2] == 'sample':
+            print_err(f"{colors.clr('sample', Color.BOLD)} option must be followed by a number")
+
     # search 
-    elif elems[1] == options[2]:
+    elif elems[1] == spe_args[2]:
         if nb_args < 3:
-            print_err("Search missing argument")
+            print_err(f"{colors.clr('search', Color.BOLD)} missing argument")
         elif elems[2] not in api_resources:
-            print_err("Search wrong ressources")
+            print_err(f"{colors.clr('search', Color.BOLD)} wrong ressources {colors.clr(elems[2], Color.RED)}")
 
 def get_options(elems):
     short_opts = []
@@ -307,7 +471,7 @@ def get_options(elems):
 
     for e in elems:
         pattern_short_opt = re.compile(r'^-\w+$')
-        pattern_long_opt = re.compile(r'^--[-\w]*\w[-\w]*$')
+        pattern_long_opt = re.compile(r'^--[-\w]*\w[-=\w]*$')
     
         if pattern_short_opt.match(e): 
             for chr in e[1:]:
@@ -324,18 +488,28 @@ def get_options(elems):
     
     return [short_opts, long_opts]
 
-def check_options(opts):
-    pass
-
 # DEBUG, move to test.py in unittest
-def print_options(opts):
-    for opt in opts[0]:
-        print(opt)
-    for opt in opts[1]:
-        print(opt)
+def print_options(opts=user_opts):
+    if opts is not None:
+        for opt in opts[0]:
+            print(opt)
+        for opt in opts[1]:
+            print(opt)
 
 def rm_options(elems):
     return [e for e in elems if not e.startswith('-')]
+
+
+def check_options(opts):
+    global user_opts
+    user_opts = opts
+
+    # global opt_n
+
+    # for opt in user_opts[1]:
+    #     if opt[0] == 'n':
+    #         opt_n = str(opt[2:])
+    # print(user_opts)
 
 def handle_args(elems):
     options_tmp = get_options(elems[1:])
@@ -343,14 +517,17 @@ def handle_args(elems):
     args_no_opts = rm_options(elems)
     # print(args_no_opts)
     check_options(options_tmp)
-    # return
+    
     check_args(args_no_opts)
     if err_occured == True:
         return
     
-    data = switch_case(elems)
+    # print_options(options_tmp)
+    
+    data = switch_case(args_no_opts)
     if stream_out == True and data is not None:
         print_data(data)
+        NEW_LINE()
   
 
 ##################################################################################################################################
@@ -362,13 +539,13 @@ def init():
         NEW_LINE()
     check_resources(verbose, stream_err)
 
-def exit():
+def exit_main():
     pass
 
 def main():
     init()
     handle_args(args)
-    exit()
+    exit_main()
     
 if __name__ == "__main__":
     main()
